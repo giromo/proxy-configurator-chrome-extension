@@ -1,48 +1,49 @@
-name: Create ZIP Release for Chrome Extension (Only Install Files)
+name: Create Clean ZIP Release for Chrome Extension (Only Install Files)
 
 on:
   push:
     tags:
-      - 'v*'  # اجرا فقط وقتی تگ مثل v2.0.0 push می‌کنی
+      - 'v*'  # فقط برای تگ‌ها مثل v2.0.0
 
 jobs:
   build-and-release:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4  # چک‌اوت repo
+        uses: actions/checkout@v4
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '20'  # نسخه Node
+          node-version: '20'
 
       - name: Install dependencies
-        run: npm ci  # نصب سریع وابستگی‌ها
+        run: npm ci
 
       - name: Build project
-        run: npm run build  # اجرای build - پوشه dist/ رو می‌سازه با فایل‌های نهایی (manifest, bundle.js, icons, etc.)
+        run: npm run build  # ساخت dist/ با فایل‌های نهایی (manifest, bundle.js, icons, etc.)
 
-      - name: Create ZIP of only dist folder contents
+      - name: Create ZIP of dist folder contents only (files at root)
         run: |
-          # ساخت ZIP فقط از محتوای dist/ (بدون src/, README, LICENSE و غیره)
+          # ورود به dist و ZIP فقط محتوای داخلش (بدون پوشه dist/)
           cd dist
-          zip -r ../proxy-configurator-extension-v${{ github.ref_name }}.zip .  # ZIP همه فایل‌های داخل dist/ به root ZIP
+          zip -r ../proxy-configurator-extension-v${{ github.ref_name }}.zip . -x "*/node_modules/*" "*/src/*" "*.log" ".git/*"  # ZIP با exclusions اضافی
           cd ..
+          # چک محتوای ZIP (اختیاری برای دیباگ)
+          unzip -l proxy-configurator-extension-v${{ github.ref_name }}.zip
 
       - name: Create Release and Attach ZIP
-        uses: softprops/action-gh-release@v2  # ایجاد Release و attach ZIP
+        uses: softprops/action-gh-release@v2
         if: startsWith(github.ref, 'refs/tags/')
         with:
-          files: proxy-configurator-extension-v${{ github.ref_name }}.zip  # attach ZIP (نام با نسخه)
+          files: proxy-configurator-extension-v${{ github.ref_name }}.zip
           tag_name: ${{ github.ref }}
-          name: 'Version ${{ github.ref_name }} - Proxy Configurator Extension (Install ZIP)'
+          name: 'Version ${{ github.ref_name }} - Clean Install ZIP'
           body: |
             ### تغییرات نسخه ${{ github.ref_name }}
-            - بیلد خودکار فایل‌های افزونه (فقط فایل‌های لازم برای نصب)
-            - ZIP شامل: manifest.json, background.js, bundle.js, index.html, icons (بدون فایل‌های توسعه مثل src/ یا node_modules)
-            - **نصب آسان**: دانلود کن، unzip کن، به `chrome://extensions/` برو، Developer Mode فعال کن، **Load unpacked** بزن و پوشه unzip‌شده رو انتخاب کن.
+            - ZIP فقط شامل فایل‌های ضروری برای نصب: `manifest.json`, `background.js`, `bundle.js`, `index.html`, `icons/` (بدون src/, README, LICENSE یا node_modules).
+            - **نصب**: دانلود کن، unzip کن (فایل‌ها مستقیم در root هستن)، `chrome://extensions/` > Developer Mode > **Load unpacked** > پوشه unzip‌شده.
 
-            **نکته امنیتی**: فقط از پراکسی‌های معتبر استفاده کن. برای تست، host: `proxy.example.com` و port: `1080` امتحان کن.
+            **تست**: host: `proxy.example.com`, port: `1080`, type: SOCKS5.
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}  # توکن خودکار GitHub
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
