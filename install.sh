@@ -10,7 +10,7 @@ if ! command -v unzip &> /dev/null; then
 fi
 
 # Download ZIP (replace with your GitHub URL)
-ZIP_URL="https://github.com/yourusername/proxy-configurator-chrome-extension/raw/main/proxy-configurator-chrome-extension.zip"
+ZIP_URL="https://github.com/giromo/proxy-configurator-chrome-extension/raw/main/proxy-configurator-chrome-extension.zip"
 ZIP_FILE="proxy-configurator-chrome-extension.zip"
 FOLDER="proxy-configurator-chrome-extension"
 
