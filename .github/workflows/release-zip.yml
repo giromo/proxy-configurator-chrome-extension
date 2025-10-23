@@ -1,0 +1,49 @@
+name: Create ZIP Release for Chrome Extension
+
+on:
+  push:
+    tags:
+      - 'v*'  # فقط وقتی تگ مثل v2.0.0 push می‌کنی، اجرا می‌شه
+
+jobs:
+  build-and-release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4  # چک‌اوت کد repo
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'  # نسخه Node برای build
+
+      - name: Install dependencies
+        run: npm ci  # نصب وابستگی‌ها (ci برای CI/CD سریع‌تر از install)
+
+      - name: Build project
+        run: npm run build  # اجرای build (پوشه dist/ رو می‌سازه)
+
+      - name: Create ZIP of dist folder
+        uses: thedoctor0/zip-release@main  # Action آماده برای ZIP
+        with:
+          type: 'zip'
+          filename: 'proxy-configurator-extension.zip'  # نام ZIP (می‌تونی تغییر بدی)
+          path: './dist'  # ZIP از پوشه dist/ (فایل‌های نهایی افزونه)
+          exclusions: '*.git* /*node_modules/* /*.github/* *.log .env src/ .gitignore'  # حذف فایل‌های ناخواسته
+
+      - name: Create Release and Attach ZIP
+        uses: softprops/action-gh-release@v2  # Action برای ایجاد Release و attach فایل
+        if: startsWith(github.ref, 'refs/tags/')  # فقط برای تگ‌ها
+        with:
+          files: proxy-configurator-extension.zip  # attach ZIP به Release
+          tag_name: ${{ github.ref }}  # تگ مثل v2.0.0
+          name: 'Version ${{ github.ref_name }} - Proxy Configurator Extension'  # عنوان Release
+          body: |
+            ### تغییرات نسخه ${{ github.ref_name }}
+            - بیلد خودکار فایل‌های افزونه
+            - ZIP شامل: manifest.json, background.js, bundle.js, icons
+            - برای نصب: دانلود کن، unzip کن، در chrome://extensions/ > Load unpacked > انتخاب پوشه.
+
+            **نکته**: فقط فایل‌های ضروری در ZIP هست. برای نصب، Developer Mode رو فعال کن.
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}  # توکن GitHub خودکار
