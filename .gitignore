@@ -1,0 +1,26 @@
+# Dependencies
+node_modules/
+.pnp
+.pnp.js
+yarn.lock
+package-lock.json
+
+# Production build
+dist/
+build/
+
+# Development
+.vscode/
+.idea/
+*.log
+.env
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Chrome Extension
+chrome-extension-profile/
+
+# Testing
+coverage/
