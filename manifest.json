@@ -1,0 +1,44 @@
+{
+  "manifest_version": 3,
+  "name": "Proxy Configurator",
+  "version": "2.0.0",
+  "description": "A professional SOCKS4/SOCKS5 proxy configuration tool for Chrome",
+  "author": "Your Name",
+  "icons": {
+    "16": "public/icons/icon16.png",
+    "32": "public/icons/icon32.png",
+    "48": "public/icons/icon48.png",
+    "128": "public/icons/icon128.png",
+    "512": "public/icons/icon512.png"
+  },
+  "permissions": [
+    "proxy",
+    "storage",
+    "activeTab"
+  ],
+  "host_permissions": [
+    "<all_urls>"
+  ],
+  "background": {
+    "service_worker": "public/background.js"
+  },
+  "action": {
+    "default_popup": "index.html",
+    "default_title": "Proxy Configurator",
+    "default_icon": {
+      "16": "public/icons/icon16.png",
+      "32": "public/icons/icon32.png",
+      "48": "public/icons/icon48.png",
+      "128": "public/icons/icon128.png"
+    }
+  },
+  "content_security_policy": {
+    "extension_pages": "script-src 'self'; object-src 'self'"
+  },
+  "web_accessible_resources": [
+    {
+      "resources": ["public/*"],
+      "matches": ["<all_urls>"]
+    }
+  ]
+}
