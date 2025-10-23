@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Proxy Configurator Installer</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    body {
+      font-family: 'Inter', sans-serif;
+    }
+    .step {
+      display: none;
+    }
+    .step.active {
+      display: block;
+    }
+  </style>
+</head>
+<body class="min-h-screen bg-gray-100 flex items-center justify-center p-4">
+  <div class="max-w-md w-full bg-white rounded-lg shadow-lg p-6 space-y-6">
+    <h1 class="text-2xl font-bold text-center text-gray-800">Proxy Configurator Installer</h1>
+    <div id="steps" class="space-y-4">
+      <!-- Step 1 -->
+      <div class="step active" data-step="1">
+        <h2 class="text-lg font-semibold text-gray-700">Step 1: Download Extension</h2>
+        <p class="text-sm text-gray-600">Download the extension ZIP file to your computer.</p>
+        <a
+          href="https://github.com/yourusername/proxy-configurator-chrome-extension/raw/main/proxy-configurator-chrome-extension.zip"
+          download
+          class="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition"
+        >
+          Download ZIP
+        </a>
+      </div>
+      <!-- Step 2 -->
+      <div class="step" data-step="2">
+        <h2 class="text-lg font-semibold text-gray-700">Step 2: Extract ZIP</h2>
+        <p class="text-sm text-gray-600">Unzip the downloaded file to a folder on your computer.</p>
+        <p class="text-sm text-gray-500">Example: Extract to <code>proxy-configurator-chrome-extension</code></p>
+      </div>
+      <!-- Step 3 -->
+      <div class="step" data-step="3">
+        <h2 class="text-lg font-semibold text-gray-700">Step 3: Open Chrome Extensions</h2>
+        <p class="text-sm text-gray-600">Open Chrome and navigate to:</p>
+        <p class="text-sm text-gray-500"><code>chrome://extensions/</code></p>
+        <p class="text-sm text-gray-600">Enable <strong>Developer mode</strong> in the top-right corner.</p>
+      </div>
+      <!-- Step 4 -->
+      <div class="step" data-step="4">
+        <h2 class="text-lg font-semibold text-gray-700">Step 4: Load Extension</h2>
+        <p class="text-sm text-gray-600">Click <strong>Load unpacked</strong> and select the extracted folder.</p>
+        <p class="text-sm text-gray-500">The extension will appear in your Chrome toolbar.</p>
+      </div>
+      <!-- Step 5 -->
+      <div class="step" data-step="5">
+        <h2 class="text-lg font-semibold text-gray-700">Step 5: Start Using</h2>
+        <p class="text-sm text-gray-600">Click the extension icon in Chrome to configure your proxy settings.</p>
+        <p class="text-sm text-gray-500">Example settings:</p>
+        <ul class="text-sm text-gray-500 list-disc pl-5">
+          <li>Host: <code>proxy.example.com</code></li>
+          <li>Port: <code>1080</code></li>
+          <li>Type: <code>SOCKS5</code></li>
+        </ul>
+        <a
+          href="chrome://extensions/"
+          class="inline-flex items-center px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 transition mt-4"
+        >
+          Open Extensions
+        </a>
+      </div>
+    </div>
+    <div class="flex justify-between">
+      <button
+        id="prevBtn"
+        class="px-4 py-2 bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300 transition disabled:opacity-50"
+        disabled
+      >
+        Previous
+      </button>
+      <button
+        id="nextBtn"
+        class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition"
+      >
+        Next
+      </button>
+    </div>
+  </div>
+
+  <script>
+    const steps = document.querySelectorAll('.step');
+    const prevBtn = document.getElementById('prevBtn');
+    const nextBtn = document.getElementById('nextBtn');
+    let currentStep = 1;
+
+    function updateSteps() {
+      steps.forEach((step, index) => {
+        step.classList.toggle('active', parseInt(step.dataset.step) === currentStep);
+      });
+      prevBtn.disabled = currentStep === 1;
+      nextBtn.textContent = currentStep === steps.length ? 'Finish' : 'Next';
+    }
+
+    prevBtn.addEventListener('click', () => {
+      if (currentStep > 1) {
+        currentStep--;
+        updateSteps();
+      }
+    });
+
+    nextBtn.addEventListener('click', () => {
+      if (currentStep < steps.length) {
+        currentStep++;
+        updateSteps();
+      } else {
+        window.location.href = 'chrome://extensions/';
+      }
+    });
+
+    updateSteps();
+  </script>
+</body>
+</html>
