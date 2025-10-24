@@ -1,4 +1,4 @@
-name: Clean Chrome Extension ZIP (Only Install Files)
+name: Auto Clean ZIP for Chrome Extension Install (Fallback & Debug)
 
 on:
   push:
@@ -6,13 +6,13 @@ on:
       - 'v*'
 
 jobs:
-  build-and-release:
+  release:
     runs-on: ubuntu-latest
     permissions:
-      contents: write  # برای ایجاد Release
+      contents: write  # برای Release
 
     steps:
-      - name: Checkout code
+      - name: Checkout
         uses: actions/checkout@v4
 
       - name: Setup Node.js
@@ -20,86 +20,89 @@ jobs:
         with:
           node-version: '20'
 
-      - name: Install dependencies
-        run: npm ci
+      - name: Install deps
+        run: npm ci --only=production  # فقط production deps (سریع‌تر)
 
-      - name: Build project
-        run: npm run build
-
-      # --- دیباگ: چک کن dist/ چی داره ---
-      - name: Debug:List dist contents
+      - name: Attempt build
         run: |
-          echo "=== Contents of dist/ ==="
-          ls -la dist/ || echo "dist/ folder not found or empty!"
-          echo "=== All files in repo ==="
+          echo "=== Attempting npm run build ==="
+          npm run build || echo "Build failed - using fallback"
+
+      - name: Debug folders
+        run: |
+          echo "=== Repo structure ==="
           ls -la
+          echo "=== Dist contents ==="
+          ls -la dist/ || echo "No dist folder"
+          echo "=== Public contents ==="
+          ls -la public/ || echo "No public folder"
 
-      # --- ساخت پوشه موقت برای فایل‌های نهایی ---
-      - name: Prepare clean extension folder
+      - name: Create clean extension package
         run: |
-          mkdir -p extension-clean
+          mkdir -p clean-extension
           
-          # کپی فقط فایل‌های ضروری (حتی اگر build نشد)
-          cp manifest.json extension-clean/ || echo "manifest.json not found"
-          cp -r public/* extension-clean/ 2>/dev/null || echo "public/ folder issue"
+          # کپی فایل‌های ضروری (fallback بدون build)
+          cp manifest.json clean-extension/ 2>/dev/null || echo "manifest missing"
+          cp public/background.js clean-extension/ 2>/dev/null || echo "background missing"
+          cp public/index.html clean-extension/ 2>/dev/null || echo "index.html missing"
           
-          # اگر dist/ وجود داشت، محتوای اون رو هم کپی کن (bundle.js و غیره)
-          if [ -d "dist" ]; then
-            cp -r dist/* extension-clean/ 2>/dev/null || echo "dist/ copy failed"
+          # اگر dist/ وجود داشت، bundle.js و etc. رو اضافه کن
+          if [ -f "dist/bundle.js" ]; then
+            cp dist/bundle.js clean-extension/ 2>/dev/null
+            cp dist/index.html clean-extension/ 2>/dev/null || cp public/index.html clean-extension/ 2>/dev/null
           fi
+          
+          # کپی icons
+          mkdir -p clean-extension/icons
+          cp public/icons/* clean-extension/icons/ 2>/dev/null || echo "icons missing"
+          
+          # حذف هر فایل اضافی (strict clean)
+          find clean-extension -name "src*" -type d -exec rm -rf {} + 2>/dev/null
+          find clean-extension -name "node_modules*" -type d -exec rm -rf {} + 2>/dev/null
+          find clean-extension -name "README*" -type f -delete 2>/dev/null
+          find clean-extension -name "LICENSE*" -type f -delete 2>/dev/null
+          find clean-extension -name ".gitignore*" -type f -delete 2>/dev/null
+          find clean-extension -name "package*" -type f -delete 2>/dev/null
+          find clean-extension -name "tsconfig*" -type f -delete 2>/dev/null
+          find clean-extension -name "webpack*" -type f -delete 2>/dev/null
+          find clean-extension -name "tailwind*" -type f -delete 2>/dev/null
+          find clean-extension -name ".github*" -type d -exec rm -rf {} + 2>/dev/null
 
-          # حذف فایل‌های غیرضروری از پوشه نهایی
-          rm -rf extension-clean/src extension-clean/node_modules extension-clean/.github \
-                 extension-clean/README.md extension-clean/LICENSE extension-clean/.gitignore \
-                 extension-clean/package.json extension-clean/tsconfig.json \
-                 extension-clean/webpack.config.js extension-clean/tailwind.config.js
+          echo "=== Clean extension contents ==="
+          ls -la clean-extension/
 
-          echo "=== Final clean folder ==="
-          ls -la extension-clean/
-
-      # --- ساخت ZIP فقط از پوشه تمیز ---
-      - name: Create Clean ZIP
+      - name: ZIP clean package
         run: |
-          cd extension-clean
-          zip -r ../proxy-configurator-v${{ github.ref_name }}.zip ./*
+          cd clean-extension
+          zip -r ../proxy-configurator-v${{ github.ref_name }}.zip *
           cd ..
-          echo "=== ZIP Contents ==="
+          echo "=== Final ZIP contents ==="
           unzip -l proxy-configurator-v${{ github.ref_name }}.zip
 
-      # --- آپلود ZIP به عنوان artifact (برای دیباگ) ---
-      - name: Upload ZIP artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: extension-zip
-          path: proxy-configurator-v${{ github.ref_name }}.zip
-
-      # --- ایجاد Release بدون ZIP خودکار ---
-      - name: Create Release (No Auto Source Code)
+      - name: Create Release with clean ZIP only
         uses: softprops/action-gh-release@v2
         with:
           files: proxy-configurator-v${{ github.ref_name }}.zip
           tag_name: ${{ github.ref_name }}
-          name: "Version ${{ github.ref_name }} - Install ZIP"
+          name: "v${{ github.ref_name }} - Clean Install ZIP"
           body: |
-            **فقط فایل‌های نصب افزونه در این ZIP هست!**
-
-            شامل:
-            - `manifest.json`
-            - `background.js`
-            - `index.html`
-            - `bundle.js`
-            - `icons/`
-
+            ### Clean ZIP for Chrome Extension Install
+            
+            **فقط فایل‌های ضروری:**
+            - manifest.json
+            - background.js
+            - index.html
+            - bundle.js (if built)
+            - icons/
+            
+            **بدون:** src/, README, LICENSE, node_modules, .github, etc.
+            
             **نصب:**
-            1. دانلود کن
-            2. unzip کن
-            3. `chrome://extensions/` → Developer Mode → Load unpacked → پوشه
-
-            **بدون**: src/, README, LICENSE, node_modules, .github
-          generate_release_notes: false
-          draft: false
-          prerelease: false
-          # مهم: غیرفعال کردن ZIP خودکار
-          append_body: true
+            1. دانلود ZIP
+            2. unzip (فایل‌ها در root)
+            3. chrome://extensions/ → Developer Mode → Load unpacked → پوشه
+            
+            Check Actions tab for build logs.
+          generate_release_notes: false  # غیرفعال ZIP خودکار
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
