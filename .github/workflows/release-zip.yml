@@ -1,13 +1,16 @@
-name: Create Clean ZIP Release for Chrome Extension (Debug & Strict)
+name: Clean Chrome Extension ZIP (Only Install Files)
 
 on:
   push:
     tags:
-      - 'v*'  # فقط برای تگ‌ها مثل v2.0.0
+      - 'v*'
 
 jobs:
   build-and-release:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write  # برای ایجاد Release
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -21,42 +24,82 @@ jobs:
         run: npm ci
 
       - name: Build project
-        run: npm run build  # ساخت dist/ با فایل‌های نهایی
+        run: npm run build
 
-      - name: Debug - List dist contents
+      # --- دیباگ: چک کن dist/ چی داره ---
+      - name: Debug:List dist contents
         run: |
-          echo "=== Dist folder contents after build ==="
-          ls -la dist/ || echo "Dist folder is empty or build failed!"
-          echo "=== Full repo structure ==="
-          ls -la .  # برای دیباگ کل repo
+          echo "=== Contents of dist/ ==="
+          ls -la dist/ || echo "dist/ folder not found or empty!"
+          echo "=== All files in repo ==="
+          ls -la
 
-      - name: Create ZIP of dist folder contents only (strict exclusions)
+      # --- ساخت پوشه موقت برای فایل‌های نهایی ---
+      - name: Prepare clean extension folder
         run: |
-          # ورود به dist و ZIP فقط فایل‌های داخل (بدون پوشه dist/)
-          if [ -d "dist" ] && [ "$(ls -A dist)" ]; then
-            cd dist
-            zip -r ../proxy-configurator-extension-v${{ github.ref_name }}.zip . -x "node_modules/*" "src/*" "*.log" ".git/*" "README*" "LICENSE*" ".gitignore" ".github/*" "package*" "tsconfig*" "webpack*" "tailwind*"  # exclusions کامل
-            cd ..
-          else
-            echo "Dist empty - fallback ZIP of essential files"
-            zip -r proxy-configurator-extension-v${{ github.ref_name }}.zip manifest.json public/ -x "public/src/*" "public/node_modules/*" "*.log" ".git/*"  # fallback به فایل‌های اصلی
+          mkdir -p extension-clean
+          
+          # کپی فقط فایل‌های ضروری (حتی اگر build نشد)
+          cp manifest.json extension-clean/ || echo "manifest.json not found"
+          cp -r public/* extension-clean/ 2>/dev/null || echo "public/ folder issue"
+          
+          # اگر dist/ وجود داشت، محتوای اون رو هم کپی کن (bundle.js و غیره)
+          if [ -d "dist" ]; then
+            cp -r dist/* extension-clean/ 2>/dev/null || echo "dist/ copy failed"
           fi
-          # لاگ محتوای ZIP برای چک
-          echo "=== ZIP contents ==="
-          unzip -l proxy-configurator-extension-v${{ github.ref_name }}.zip
 
-      - name: Create Release and Attach ZIP
-        uses: softprops/action-gh-release@v2
-        if: startsWith(github.ref, 'refs/tags/')
+          # حذف فایل‌های غیرضروری از پوشه نهایی
+          rm -rf extension-clean/src extension-clean/node_modules extension-clean/.github \
+                 extension-clean/README.md extension-clean/LICENSE extension-clean/.gitignore \
+                 extension-clean/package.json extension-clean/tsconfig.json \
+                 extension-clean/webpack.config.js extension-clean/tailwind.config.js
+
+          echo "=== Final clean folder ==="
+          ls -la extension-clean/
+
+      # --- ساخت ZIP فقط از پوشه تمیز ---
+      - name: Create Clean ZIP
+        run: |
+          cd extension-clean
+          zip -r ../proxy-configurator-v${{ github.ref_name }}.zip ./*
+          cd ..
+          echo "=== ZIP Contents ==="
+          unzip -l proxy-configurator-v${{ github.ref_name }}.zip
+
+      # --- آپلود ZIP به عنوان artifact (برای دیباگ) ---
+      - name: Upload ZIP artifact
+        uses: actions/upload-artifact@v4
         with:
-          files: proxy-configurator-extension-v${{ github.ref_name }}.zip
-          tag_name: ${{ github.ref }}
-          name: 'Version ${{ github.ref_name }} - Clean Install ZIP (Debugged)'
-          body: |
-            ### تغییرات نسخه ${{ github.ref_name }}
-            - ZIP فقط شامل فایل‌های ضروری: `manifest.json`, `background.js`, `bundle.js`, `index.html`, `icons/` (بدون src/, README, LICENSE, node_modules یا .github).
-            - **نصب**: دانلود کن، unzip کن (فایل‌ها در root هستن)، `chrome://extensions/` > Developer Mode > **Load unpacked** > پوشه unzip‌شده.
+          name: extension-zip
+          path: proxy-configurator-v${{ github.ref_name }}.zip
 
-            **لاگ Actions**: چک کن محتوای ZIP در Actions تب باشه. اگر مشکلی بود، issue باز کن.
+      # --- ایجاد Release بدون ZIP خودکار ---
+      - name: Create Release (No Auto Source Code)
+        uses: softprops/action-gh-release@v2
+        with:
+          files: proxy-configurator-v${{ github.ref_name }}.zip
+          tag_name: ${{ github.ref_name }}
+          name: "Version ${{ github.ref_name }} - Install ZIP"
+          body: |
+            **فقط فایل‌های نصب افزونه در این ZIP هست!**
+
+            شامل:
+            - `manifest.json`
+            - `background.js`
+            - `index.html`
+            - `bundle.js`
+            - `icons/`
+
+            **نصب:**
+            1. دانلود کن
+            2. unzip کن
+            3. `chrome://extensions/` → Developer Mode → Load unpacked → پوشه
+
+            **بدون**: src/, README, LICENSE, node_modules, .github
+          generate_release_notes: false
+          draft: false
+          prerelease: false
+          # مهم: غیرفعال کردن ZIP خودکار
+          append_body: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
